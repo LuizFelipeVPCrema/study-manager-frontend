@@ -25,22 +25,45 @@ export class RegisterComponent {
   ) {}
 
   onSubmit(): void {
+    // Validações do frontend
+    if (!this.userData().name || !this.userData().email || !this.userData().password) {
+      this.authService.error.set('Todos os campos são obrigatórios');
+      return;
+    }
+
     if (this.userData().password !== this.userData().confirmPassword) {
       this.authService.error.set('As senhas não coincidem');
       return;
     }
 
-    if (this.userData().name && this.userData().email && this.userData().password) {
-      const { confirmPassword, ...registerData } = this.userData();
-      this.authService.register(registerData).subscribe({
-        next: () => {
-          this.router.navigate(['/dashboard']);
-        },
-        error: (error) => {
-          console.error('Register error:', error);
-        }
-      });
+    // Validação de senha - mínimo 6 caracteres
+    if (this.userData().password.length < 6) {
+      this.authService.error.set('A senha deve ter pelo menos 6 caracteres');
+      return;
     }
+
+    // Validação de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(this.userData().email)) {
+      this.authService.error.set('Digite um email válido');
+      return;
+    }
+
+    // Validação de nome - mínimo 2 caracteres
+    if (this.userData().name.trim().length < 2) {
+      this.authService.error.set('O nome deve ter pelo menos 2 caracteres');
+      return;
+    }
+
+    const { confirmPassword, ...registerData } = this.userData();
+    this.authService.register(registerData).subscribe({
+      next: () => {
+        this.router.navigate(['/dashboard']);
+      },
+      error: (error) => {
+        console.error('Register error:', error);
+      }
+    });
   }
 
   get isLoading() {

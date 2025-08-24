@@ -30,7 +30,7 @@ export interface AuthResponse {
   providedIn: 'root'
 })
 export class AuthService {
-  private readonly API_URL = 'http://localhost:8080/api/v1';
+  private readonly API_URL = this.getApiUrl();
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
   
@@ -39,6 +39,19 @@ export class AuthService {
 
   constructor(private http: HttpClient) {
     this.loadUserFromStorage();
+  }
+
+  private getApiUrl(): string {
+    // Em desenvolvimento no Docker, usa proxy local
+    // Em produção, pode usar variável de ambiente
+    if (typeof window !== 'undefined') {
+      const baseUrl = window.location.origin;
+      if (baseUrl.includes('localhost:4000') || baseUrl.includes('127.0.0.1:4000')) {
+        return 'http://localhost:8081/api/v1'; // Usa proxy configurado
+      }
+    }
+    // Fallback para produção ou outros ambientes
+    return 'http://localhost:8081/api/v1';
   }
 
   private loadUserFromStorage(): void {
@@ -54,13 +67,24 @@ export class AuthService {
     this.isLoading.set(true);
     this.error.set(null);
     
-    return this.http.post<AuthResponse>(`${this.API_URL}/auth/login`, credentials).pipe(
+    // Garantir que os dados sejam enviados como JSON válido
+    const loginData = {
+      email: credentials.email,
+      password: credentials.password
+    };
+    
+
+    
+    return this.http.post<AuthResponse>(`${this.API_URL}/login`, loginData, {
+      headers: { 'Content-Type': 'application/json' }
+    }).pipe(
       tap({
         next: (response) => {
           this.setSession(response);
           this.isLoading.set(false);
         },
         error: (error) => {
+          console.error('Login error details:', error);
           this.error.set(error.error?.message || 'Erro ao fazer login');
           this.isLoading.set(false);
         }
@@ -72,14 +96,42 @@ export class AuthService {
     this.isLoading.set(true);
     this.error.set(null);
     
-    return this.http.post<AuthResponse>(`${this.API_URL}/auth/register`, userData).pipe(
+    // Garantir que os dados sejam enviados como JSON válido
+    const registerData = {
+      name: userData.name,
+      email: userData.email,
+      password: userData.password
+    };
+    
+
+    
+    return this.http.post<AuthResponse>(`${this.API_URL}/register`, registerData, {
+      headers: { 'Content-Type': 'application/json' }
+    }).pipe(
       tap({
         next: (response) => {
           this.setSession(response);
           this.isLoading.set(false);
         },
         error: (error) => {
-          this.error.set(error.error?.message || 'Erro ao fazer cadastro');
+          console.error('Register error details:', error);
+          
+          // Tratar erros específicos do backend
+          if (error.error?.error) {
+            const errorMessage = error.error.error;
+            if (errorMessage.includes('Password') && errorMessage.includes('min')) {
+              this.error.set('A senha deve ter pelo menos 6 caracteres');
+            } else if (errorMessage.includes('Email')) {
+              this.error.set('Email inválido ou já cadastrado');
+            } else if (errorMessage.includes('Name')) {
+              this.error.set('Nome inválido');
+            } else {
+              this.error.set(errorMessage);
+            }
+          } else {
+            this.error.set('Erro ao fazer cadastro. Tente novamente.');
+          }
+          
           this.isLoading.set(false);
         }
       })
@@ -95,8 +147,10 @@ export class AuthService {
 
   refreshToken(): Observable<AuthResponse> {
     const refreshToken = localStorage.getItem('refresh_token');
-    return this.http.post<AuthResponse>(`${this.API_URL}/auth/refresh`, {
+    return this.http.post<AuthResponse>(`${this.API_URL}/refresh`, {
       refresh_token: refreshToken
+    }, {
+      headers: { 'Content-Type': 'application/json' }
     }).pipe(
       tap(response => this.setSession(response))
     );

@@ -27,6 +27,7 @@
             name="name"
             placeholder="Digite seu nome completo"
             required
+            minlength="2"
             (focus)="clearError()"
           />
         </div>
@@ -46,6 +47,7 @@
             name="email"
             placeholder="Digite seu email"
             required
+            pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
             (focus)="clearError()"
           />
         </div>
@@ -64,8 +66,9 @@
             id="password"
             [(ngModel)]="userData().password"
             name="password"
-            placeholder="Digite sua senha"
+            placeholder="Digite sua senha (mínimo 6 caracteres)"
             required
+            minlength="6"
             (focus)="clearError()"
           />
         </div>
@@ -86,6 +89,7 @@
             name="confirmPassword"
             placeholder="Confirme sua senha"
             required
+            minlength="6"
             (focus)="clearError()"
           />
         </div>

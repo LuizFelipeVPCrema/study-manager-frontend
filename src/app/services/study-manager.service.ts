@@ -75,7 +75,7 @@ export interface CreateBibliographyRequest {
   providedIn: 'root'
 })
 export class StudyManagerService {
-  private readonly API_URL = 'http://localhost:8080/api/v1';
+  private readonly API_URL = this.getApiUrl();
   public isLoading = signal(false);
   public error = signal<string | null>(null);
 
@@ -83,6 +83,19 @@ export class StudyManagerService {
     private http: HttpClient,
     private authService: AuthService
   ) {}
+
+  private getApiUrl(): string {
+    // Em desenvolvimento no Docker, usa proxy local
+    // Em produção, pode usar variável de ambiente
+    if (typeof window !== 'undefined') {
+      const baseUrl = window.location.origin;
+      if (baseUrl.includes('localhost:4000') || baseUrl.includes('127.0.0.1:4000')) {
+        return '/api/v1'; // Usa proxy configurado para study manager
+      }
+    }
+    // Fallback para produção ou outros ambientes
+    return 'http://localhost:8080/api/v1';
+  }
 
   private getHeaders(): HttpHeaders {
     const token = this.authService.getToken();
