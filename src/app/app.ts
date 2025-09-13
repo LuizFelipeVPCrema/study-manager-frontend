@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, ErrorHandler, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
 @Component({
@@ -9,4 +9,15 @@ import { RouterOutlet } from '@angular/router';
 })
 export class App {
   protected readonly title = signal('Study Manager');
+
+  constructor() {
+    // Tratamento global de erros
+    window.addEventListener('error', (event) => {
+      console.error('Erro global capturado:', event.error);
+    });
+
+    window.addEventListener('unhandledrejection', (event) => {
+      console.error('Promise rejeitada não tratada:', event.reason);
+    });
+  }
 }

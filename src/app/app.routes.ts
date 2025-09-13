@@ -30,6 +30,14 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/dashboard/overview/overview.component').then(m => m.OverviewComponent)
       },
       {
+        path: 'subjects',
+        loadComponent: () => import('./pages/dashboard/subjects/subjects.component').then(m => m.SubjectsComponent)
+      },
+      {
+        path: 'exams',
+        loadComponent: () => import('./pages/dashboard/exams/exams.component').then(m => m.ExamsComponent)
+      },
+      {
         path: 'study-plans',
         loadComponent: () => import('./pages/dashboard/study-plans/study-plans.component').then(m => m.StudyPlansComponent)
       },

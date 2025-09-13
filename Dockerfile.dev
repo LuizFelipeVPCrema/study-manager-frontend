@@ -16,10 +16,10 @@ RUN npm ci --include=dev
 # Copia o código fonte
 COPY . .
 
-# Expõe a porta 4000
-EXPOSE 4000
+# Expõe a porta 4200
+EXPOSE 4200
 
 # Comando para iniciar o servidor de desenvolvimento
-CMD ["ng", "serve", "--host", "0.0.0.0", "--port", "4000", "--poll", "2000"]
+CMD ["ng", "serve", "--host", "0.0.0.0", "--port", "4200", "--poll", "2000"]
 
 

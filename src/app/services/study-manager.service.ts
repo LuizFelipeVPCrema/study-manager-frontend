@@ -3,72 +3,120 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { AuthService } from './auth.service';
 
-export interface StudyPlan {
-  id: string;
-  title: string;
-  description: string;
-  subject: string;
-  start_date: string;
-  end_date: string;
-  status: 'active' | 'completed' | 'paused';
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Note {
-  id: string;
-  title: string;
-  content: string;
-  subject: string;
-  tags: string[];
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Bibliography {
-  id: string;
-  title: string;
-  author: string;
-  year: number;
-  publisher: string;
-  url?: string;
-  notes?: string;
-  created_at: string;
-}
-
-export interface StudyFile {
+// Interfaces baseadas na documentação do backend
+export interface Student {
   id: string;
   name: string;
-  original_name: string;
-  size: number;
-  type: string;
-  url: string;
-  subject: string;
+  email: string;
+  user_id: string;
   created_at: string;
+  updated_at: string;
 }
 
-export interface CreateStudyPlanRequest {
+export interface Subject {
+  id: string;
+  student_id: string;
+  name: string;
+  description: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Exam {
+  id: string;
+  subject_id: string;
   title: string;
   description: string;
-  subject: string;
-  start_date: string;
-  end_date: string;
+  due_date: string;
+  type: 'exam' | 'assignment' | 'project' | 'quiz';
+  status: 'pending' | 'in_progress' | 'completed';
+  created_at: string;
+  updated_at: string;
 }
 
-export interface CreateNoteRequest {
+export interface StudyContent {
+  id: string;
+  subject_id: string;
+  exam_id?: string;
   title: string;
-  content: string;
-  subject: string;
-  tags: string[];
+  description: string;
+  is_completed: boolean;
+  order: number;
+  created_at: string;
+  updated_at: string;
 }
 
-export interface CreateBibliographyRequest {
+export interface Attachment {
+  id: string;
+  exam_id: string;
+  file_name: string;
+  original_name: string;
+  file_path: string;
+  file_size: number;
+  mime_type: string;
+  description: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ExamReference {
+  id: string;
+  exam_id: string;
   title: string;
   author: string;
-  year: number;
   publisher: string;
+  year: number;
+  isbn: string;
+  url: string;
+  description: string;
+  type: 'book' | 'article' | 'website' | 'video' | 'other';
+  created_at: string;
+  updated_at: string;
+}
+
+// Request interfaces
+export interface CreateStudentRequest {
+  name: string;
+  email: string;
+}
+
+export interface CreateSubjectRequest {
+  name: string;
+  description: string;
+}
+
+export interface CreateExamRequest {
+  subject_id: string;
+  title: string;
+  description: string;
+  due_date?: string;
+  type?: string;
+}
+
+export interface CreateStudyContentRequest {
+  subject_id: string;
+  exam_id?: string;
+  title: string;
+  description: string;
+  order?: number;
+}
+
+export interface CreateAttachmentRequest {
+  exam_id: string;
+  file: File;
+  description?: string;
+}
+
+export interface CreateExamReferenceRequest {
+  exam_id: string;
+  title: string;
+  author: string;
+  publisher: string;
+  year: number;
+  isbn?: string;
   url?: string;
-  notes?: string;
+  description?: string;
+  type?: string;
 }
 
 @Injectable({
@@ -101,143 +149,266 @@ export class StudyManagerService {
     const token = this.authService.getToken();
     return new HttpHeaders({
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
+      'Authorization': `Bearer ${token}`,
+      'X-Client-ID': 'your_client_id' // Será configurado dinamicamente
     });
   }
 
-  // Study Plans
-  getStudyPlans(): Observable<StudyPlan[]> {
+  // Students
+  createStudent(student: CreateStudentRequest): Observable<Student> {
     this.isLoading.set(true);
-    return this.http.get<StudyPlan[]>(`${this.API_URL}/study-plans`, {
-      headers: this.getHeaders()
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json',
+      'X-User-ID': this.authService.getCurrentUser()?.email || ''
     });
+    
+    return this.http.post<Student>(`${this.API_URL}/students`, student, { headers });
   }
 
-  getStudyPlan(id: string): Observable<StudyPlan> {
-    return this.http.get<StudyPlan>(`${this.API_URL}/study-plans/${id}`, {
-      headers: this.getHeaders()
-    });
-  }
-
-  createStudyPlan(plan: CreateStudyPlanRequest): Observable<StudyPlan> {
+  getStudents(): Observable<Student[]> {
     this.isLoading.set(true);
-    return this.http.post<StudyPlan>(`${this.API_URL}/study-plans`, plan, {
+    return this.http.get<Student[]>(`${this.API_URL}/students`, {
       headers: this.getHeaders()
     });
   }
 
-  updateStudyPlan(id: string, plan: Partial<StudyPlan>): Observable<StudyPlan> {
-    return this.http.put<StudyPlan>(`${this.API_URL}/study-plans/${id}`, plan, {
+  getStudent(id: string): Observable<Student> {
+    return this.http.get<Student>(`${this.API_URL}/students/${id}`, {
       headers: this.getHeaders()
     });
   }
 
-  deleteStudyPlan(id: string): Observable<void> {
-    return this.http.delete<void>(`${this.API_URL}/study-plans/${id}`, {
+  getStudentByUserId(userId: string): Observable<Student> {
+    return this.http.get<Student>(`${this.API_URL}/students/user/${userId}`, {
       headers: this.getHeaders()
     });
   }
 
-  // Notes
-  getNotes(): Observable<Note[]> {
+  updateStudent(id: string, student: Partial<Student>): Observable<Student> {
+    return this.http.put<Student>(`${this.API_URL}/students/${id}`, student, {
+      headers: this.getHeaders()
+    });
+  }
+
+  deleteStudent(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.API_URL}/students/${id}`, {
+      headers: this.getHeaders()
+    });
+  }
+
+  // Subjects
+  createSubject(subject: CreateSubjectRequest): Observable<Subject> {
     this.isLoading.set(true);
-    return this.http.get<Note[]>(`${this.API_URL}/notes`, {
+    return this.http.post<Subject>(`${this.API_URL}/subjects`, subject, {
       headers: this.getHeaders()
     });
   }
 
-  getNote(id: string): Observable<Note> {
-    return this.http.get<Note>(`${this.API_URL}/notes/${id}`, {
-      headers: this.getHeaders()
-    });
-  }
-
-  createNote(note: CreateNoteRequest): Observable<Note> {
+  getSubjects(): Observable<Subject[]> {
     this.isLoading.set(true);
-    return this.http.post<Note>(`${this.API_URL}/notes`, note, {
+    return this.http.get<Subject[]>(`${this.API_URL}/subjects`, {
       headers: this.getHeaders()
     });
   }
 
-  updateNote(id: string, note: Partial<Note>): Observable<Note> {
-    return this.http.put<Note>(`${this.API_URL}/notes/${id}`, note, {
+  getSubject(id: string): Observable<Subject> {
+    return this.http.get<Subject>(`${this.API_URL}/subjects/${id}`, {
       headers: this.getHeaders()
     });
   }
 
-  deleteNote(id: string): Observable<void> {
-    return this.http.delete<void>(`${this.API_URL}/notes/${id}`, {
+  getSubjectWithExams(id: string): Observable<Subject & { exams: Exam[] }> {
+    return this.http.get<Subject & { exams: Exam[] }>(`${this.API_URL}/subjects/${id}/exams`, {
       headers: this.getHeaders()
     });
   }
 
-  // Bibliography
-  getBibliography(): Observable<Bibliography[]> {
+  updateSubject(id: string, subject: Partial<Subject>): Observable<Subject> {
+    return this.http.put<Subject>(`${this.API_URL}/subjects/${id}`, subject, {
+      headers: this.getHeaders()
+    });
+  }
+
+  deleteSubject(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.API_URL}/subjects/${id}`, {
+      headers: this.getHeaders()
+    });
+  }
+
+  // Exams
+  createExam(exam: CreateExamRequest): Observable<Exam> {
     this.isLoading.set(true);
-    return this.http.get<Bibliography[]>(`${this.API_URL}/bibliography`, {
+    return this.http.post<Exam>(`${this.API_URL}/exams`, exam, {
       headers: this.getHeaders()
     });
   }
 
-  getBibliographyItem(id: string): Observable<Bibliography> {
-    return this.http.get<Bibliography>(`${this.API_URL}/bibliography/${id}`, {
-      headers: this.getHeaders()
-    });
-  }
-
-  createBibliographyItem(item: CreateBibliographyRequest): Observable<Bibliography> {
+  getExams(): Observable<Exam[]> {
     this.isLoading.set(true);
-    return this.http.post<Bibliography>(`${this.API_URL}/bibliography`, item, {
+    return this.http.get<Exam[]>(`${this.API_URL}/exams`, {
       headers: this.getHeaders()
     });
   }
 
-  updateBibliographyItem(id: string, item: Partial<Bibliography>): Observable<Bibliography> {
-    return this.http.put<Bibliography>(`${this.API_URL}/bibliography/${id}`, item, {
+  getExam(id: string): Observable<Exam> {
+    return this.http.get<Exam>(`${this.API_URL}/exams/${id}`, {
       headers: this.getHeaders()
     });
   }
 
-  deleteBibliographyItem(id: string): Observable<void> {
-    return this.http.delete<void>(`${this.API_URL}/bibliography/${id}`, {
+  getExamDetails(id: string): Observable<Exam & { attachments: Attachment[], references: ExamReference[], study_contents: StudyContent[] }> {
+    return this.http.get<Exam & { attachments: Attachment[], references: ExamReference[], study_contents: StudyContent[] }>(`${this.API_URL}/exams/${id}/details`, {
       headers: this.getHeaders()
     });
   }
 
-  // Files
-  getFiles(): Observable<StudyFile[]> {
+  updateExam(id: string, exam: Partial<Exam>): Observable<Exam> {
+    return this.http.put<Exam>(`${this.API_URL}/exams/${id}`, exam, {
+      headers: this.getHeaders()
+    });
+  }
+
+  deleteExam(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.API_URL}/exams/${id}`, {
+      headers: this.getHeaders()
+    });
+  }
+
+  getExamsBySubject(subjectId: string): Observable<Exam[]> {
+    return this.http.get<Exam[]>(`${this.API_URL}/subjects/${subjectId}/exams`, {
+      headers: this.getHeaders()
+    });
+  }
+
+  // Study Contents
+  createStudyContent(content: CreateStudyContentRequest): Observable<StudyContent> {
     this.isLoading.set(true);
-    return this.http.get<StudyFile[]>(`${this.API_URL}/files`, {
+    return this.http.post<StudyContent>(`${this.API_URL}/study-contents`, content, {
       headers: this.getHeaders()
     });
   }
 
-  uploadFile(file: File, subject: string): Observable<StudyFile> {
+  getStudyContent(id: string): Observable<StudyContent> {
+    return this.http.get<StudyContent>(`${this.API_URL}/study-contents/${id}`, {
+      headers: this.getHeaders()
+    });
+  }
+
+  updateStudyContent(id: string, content: Partial<StudyContent>): Observable<StudyContent> {
+    return this.http.put<StudyContent>(`${this.API_URL}/study-contents/${id}`, content, {
+      headers: this.getHeaders()
+    });
+  }
+
+  deleteStudyContent(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.API_URL}/study-contents/${id}`, {
+      headers: this.getHeaders()
+    });
+  }
+
+  completeStudyContent(id: string): Observable<StudyContent> {
+    return this.http.put<StudyContent>(`${this.API_URL}/study-contents/${id}/complete`, {}, {
+      headers: this.getHeaders()
+    });
+  }
+
+  reorderStudyContents(contents: { id: string, order: number }[]): Observable<void> {
+    return this.http.put<void>(`${this.API_URL}/study-contents/reorder`, { contents }, {
+      headers: this.getHeaders()
+    });
+  }
+
+  getStudyContentsBySubject(subjectId: string): Observable<StudyContent[]> {
+    return this.http.get<StudyContent[]>(`${this.API_URL}/subjects/${subjectId}/study-contents`, {
+      headers: this.getHeaders()
+    });
+  }
+
+  getStudyContentsByExam(examId: string): Observable<StudyContent[]> {
+    return this.http.get<StudyContent[]>(`${this.API_URL}/exams/${examId}/study-contents`, {
+      headers: this.getHeaders()
+    });
+  }
+
+  // Attachments
+  uploadAttachment(examId: string, file: File, description?: string): Observable<Attachment> {
     this.isLoading.set(true);
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('subject', subject);
+    if (description) {
+      formData.append('description', description);
+    }
 
     const headers = new HttpHeaders({
-      'Authorization': `Bearer ${this.authService.getToken()}`
+      'Authorization': `Bearer ${this.authService.getToken()}`,
+      'X-Client-ID': 'your_client_id'
     });
 
-    return this.http.post<StudyFile>(`${this.API_URL}/files/upload`, formData, {
+    return this.http.post<Attachment>(`${this.API_URL}/exams/${examId}/attachments`, formData, {
       headers
     });
   }
 
-  deleteFile(id: string): Observable<void> {
-    return this.http.delete<void>(`${this.API_URL}/files/${id}`, {
+  getAttachmentsByExam(examId: string): Observable<Attachment[]> {
+    return this.http.get<Attachment[]>(`${this.API_URL}/exams/${examId}/attachments`, {
       headers: this.getHeaders()
     });
   }
 
-  // Dashboard Stats
-  getDashboardStats(): Observable<any> {
-    return this.http.get(`${this.API_URL}/dashboard/stats`, {
+  getAttachment(id: string): Observable<Attachment> {
+    return this.http.get<Attachment>(`${this.API_URL}/attachments/${id}`, {
       headers: this.getHeaders()
     });
+  }
+
+  downloadAttachment(id: string): Observable<Blob> {
+    return this.http.get(`${this.API_URL}/attachments/${id}/download`, {
+      headers: this.getHeaders(),
+      responseType: 'blob'
+    });
+  }
+
+  deleteAttachment(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.API_URL}/attachments/${id}`, {
+      headers: this.getHeaders()
+    });
+  }
+
+  // Exam References
+  createExamReference(reference: CreateExamReferenceRequest): Observable<ExamReference> {
+    this.isLoading.set(true);
+    return this.http.post<ExamReference>(`${this.API_URL}/exams/${reference.exam_id}/references`, reference, {
+      headers: this.getHeaders()
+    });
+  }
+
+  getReferencesByExam(examId: string): Observable<ExamReference[]> {
+    return this.http.get<ExamReference[]>(`${this.API_URL}/exams/${examId}/references`, {
+      headers: this.getHeaders()
+    });
+  }
+
+  getExamReference(id: string): Observable<ExamReference> {
+    return this.http.get<ExamReference>(`${this.API_URL}/references/${id}`, {
+      headers: this.getHeaders()
+    });
+  }
+
+  updateExamReference(id: string, reference: Partial<ExamReference>): Observable<ExamReference> {
+    return this.http.put<ExamReference>(`${this.API_URL}/references/${id}`, reference, {
+      headers: this.getHeaders()
+    });
+  }
+
+  deleteExamReference(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.API_URL}/references/${id}`, {
+      headers: this.getHeaders()
+    });
+  }
+
+  // Health Check
+  getHealthStatus(): Observable<any> {
+    return this.http.get(`${this.API_URL}/health`);
   }
 
   clearError(): void {

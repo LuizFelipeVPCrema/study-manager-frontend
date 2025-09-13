@@ -58,8 +58,18 @@ export class AuthService {
     const token = localStorage.getItem('access_token');
     const user = localStorage.getItem('user');
     
-    if (token && user) {
-      this.currentUserSubject.next(JSON.parse(user));
+    if (token && user && user !== 'undefined' && user !== 'null') {
+      try {
+        const parsedUser = JSON.parse(user);
+        this.currentUserSubject.next(parsedUser);
+      } catch (error) {
+        console.error('Erro ao fazer parse do usuário do localStorage:', error);
+        // Limpar dados inválidos do localStorage
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user');
+        this.currentUserSubject.next(null);
+      }
     }
   }
 
@@ -169,11 +179,14 @@ export class AuthService {
 
   isAuthenticated(): boolean {
     const token = this.getToken();
-    if (!token) return false;
+    if (!token || token === 'undefined' || token === 'null') return false;
     
     // Verificar se o token não expirou
     try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
+      const parts = token.split('.');
+      if (parts.length !== 3) return false;
+      
+      const payload = JSON.parse(atob(parts[1]));
       return payload.exp * 1000 > Date.now();
     } catch {
       return false;
